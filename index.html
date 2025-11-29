@@ -333,22 +333,21 @@
         </div>
       </div>
       
-      <form class="chat-form" id="chatForm">
+      <div id="authSection" class="chat-auth-section">
+        <p>Sign in to ask questions and view your chat history.</p>
+        <button id="googleSignInBtn" class="chat-sign-in-btn">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M22.008 12.004c0-.771-.067-1.516-.182-2.238H12v4.237h5.882c-.254 1.294-1.026 2.39-2.316 3.14V19.99h3.292c1.928-1.782 3.04-4.406 3.04-7.986z"/>
+            <path d="M12 22.002c3.238 0 5.955-1.07 7.94-2.912l-3.292-2.555c-.911.609-2.072 1.056-3.79 1.056-2.926 0-5.395-1.98-6.286-4.636H2.684V17.91c1.96 3.9 6.002 6.092 9.316 6.092z"/>
+            <path d="M5.714 13.166c-.23-.609-.364-1.26-.364-1.934s.134-1.325.364-1.934V5.378H2.684a9.982 9.982 0 000 13.244L5.714 13.166z"/>
+            <path d="M12 5.666c1.761 0 3.327.728 4.545 1.761l2.846-2.77C17.957 2.052 15.19 1 12 1 8.683 1 4.64 3.193 2.684 7.09L5.714 9.64A6.953 6.953 0 0112 5.666z"/>
+          </svg>
+          Sign in with Google
+        </button>
+      </div>
+      
+      <form class="chat-form" id="chatForm" style="display: none;">
         <div class="form-fields">
-          <input 
-            type="text" 
-            id="userName" 
-            placeholder="Your name" 
-            required 
-            class="chat-input"
-          />
-          <input 
-            type="email" 
-            id="userEmail" 
-            placeholder="Your email" 
-            required 
-            class="chat-input"
-          />
           <textarea 
             id="userMessage" 
             placeholder="Type your message..." 
@@ -404,6 +403,11 @@
     </div>
     <p class="footer-note">Academic excellence • Traditional values • Global readiness</p>
   </footer>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

@@ -188,58 +188,162 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 100 * index);
   });
 
-  // Chat Widget Functionality
+  // Chat Widget Functionality (Firebase Integrated)
   const chatToggle = document.getElementById('chatToggle');
   const chatBox = document.getElementById('chatBox');
   const chatClose = document.getElementById('chatClose');
+  const chatMessages = document.getElementById('chatMessages');
   const chatForm = document.getElementById('chatForm');
   const chatSuccess = document.getElementById('chatSuccess');
-  const userNameInput = document.getElementById('userName');
-  const userEmailInput = document.getElementById('userEmail');
   const userMessageInput = document.getElementById('userMessage');
+  const authSection = document.getElementById('authSection');
+  const googleSignInBtn = document.getElementById('googleSignInBtn');
 
-  if (chatToggle && chatBox && chatClose && chatForm && chatSuccess) {
+  let currentUser = null; // To store the current authenticated user
+
+  // Function to render messages
+  const renderMessage = (message, isBot = false) => {
+    const messageElement = document.createElement('div');
+    messageElement.classList.add('chat-message');
+    messageElement.classList.add(isBot ? 'bot-message' : 'user-message'); // Added user-message class
+
+    messageElement.innerHTML = `
+      <div class="message-avatar">
+        ${isBot ? `
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
+          </svg>
+        ` : `
+          <img src="${message.avatar || 'https://via.placeholder.com/24/3b82f6/ffffff?text=U'}" alt="${message.userName}" style="border-radius: 50%; width: 24px; height: 24px;">
+        `}
+      </div>
+      <div class="message-content">
+        <p>${message.text}</p>
+        ${!isBot ? `<span class="message-info">${message.userName || 'You'} • ${new Date(message.timestamp).toLocaleTimeString()}</span>` : ''}
+      </div>
+    `;
+    chatMessages.appendChild(messageElement);
+    chatMessages.scrollTop = chatMessages.scrollHeight; // Auto-scroll to bottom
+  };
+
+  // Initial bot message
+  renderMessage({ text: 'Hi! 👋 How can we help you today?' }, true);
+
+
+  // Handle Google Sign-in
+  if (googleSignInBtn) {
+    googleSignInBtn.addEventListener('click', async () => {
+      try {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        await auth.signInWithPopup(provider);
+      } catch (error) {
+        console.error("Error during Google Sign-in:", error);
+      }
+    });
+  }
+
+  // Listen for authentication state changes
+  auth.onAuthStateChanged(async (user) => {
+    if (user) {
+      currentUser = user;
+      authSection.style.display = 'none';
+      chatForm.style.display = 'flex';
+
+      // Save user profile to Firestore if it's new or update it
+      const userRef = db.collection('users').doc(user.uid);
+      const doc = await userRef.get();
+      if (!doc.exists) {
+        await userRef.set({
+          uid: user.uid,
+          displayName: user.displayName,
+          email: user.email,
+          photoURL: user.photoURL,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      } else {
+        await userRef.update({
+          displayName: user.displayName,
+          photoURL: user.photoURL,
+          lastLoginAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }
+
+      // Load chat history
+      loadChatHistory(user.uid);
+      // Remove previous bot message
+      chatMessages.innerHTML = ''; // Clear previous messages
+      renderMessage({ text: `Hi ${user.displayName}! How can we help you today?` }, true);
+
+
+    } else {
+      currentUser = null;
+      authSection.style.display = 'flex';
+      chatForm.style.display = 'none';
+      chatMessages.innerHTML = ''; // Clear messages when logged out
+      renderMessage({ text: 'Please sign in to start chatting.' }, true);
+    }
+  });
+
+  // Load chat history from Firestore
+  const loadChatHistory = (userId) => {
+    db.collection('chats')
+      .where('userId', '==', userId)
+      .orderBy('timestamp', 'asc')
+      .onSnapshot((snapshot) => {
+        chatMessages.innerHTML = ''; // Clear current messages
+        renderMessage({ text: currentUser ? `Hi ${currentUser.displayName}! How can we help you today?` : 'Please sign in to start chatting.' }, true);
+
+        snapshot.forEach((doc) => {
+          const message = doc.data();
+          renderMessage({
+            text: message.text,
+            userName: message.userName,
+            avatar: message.userPhoto,
+            timestamp: message.timestamp.toDate()
+          });
+        });
+      }, (error) => {
+        console.error("Error loading chat history:", error);
+      });
+  };
+
+  // Chat form submission (using Firestore)
+  if (chatForm) {
+    chatForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const messageText = userMessageInput.value.trim();
+
+      if (messageText && currentUser) {
+        try {
+          await db.collection('chats').add({
+            userId: currentUser.uid,
+            userName: currentUser.displayName,
+            userEmail: currentUser.email,
+            userPhoto: currentUser.photoURL,
+            text: messageText,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          userMessageInput.value = ''; // Clear input
+        } catch (error) {
+          console.error("Error sending message:", error);
+        }
+      }
+    });
+  }
+
+
+  // Toggle chatbox functionality
+  if (chatToggle && chatBox && chatClose) {
     chatToggle.addEventListener('click', () => {
       chatBox.classList.toggle('open');
       chatToggle.classList.toggle('active'); // for icon change
       chatSuccess.classList.remove('show'); // Hide success message if it was open
-      chatForm.style.display = 'flex'; // Show form again
     });
 
     chatClose.addEventListener('click', () => {
       chatBox.classList.remove('open');
       chatToggle.classList.remove('active');
-    });
-
-    chatForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-
-      const name = userNameInput.value;
-      const email = userEmailInput.value;
-      const message = userMessageInput.value;
-
-      // Construct mailto link
-      const subject = encodeURIComponent(`Question from ${name} via Website Chat`);
-      const body = encodeURIComponent(`Name: ${name}\nEmail: ${email}\n\nMessage:\n${message}`);
-      const mailtoLink = `mailto:ixm205@piima.uz?subject=${subject}&body=${body}`;
-      
-      // Open default email client
-      window.open(mailtoLink, '_blank');
-
-      // Display success message and reset form
-      chatForm.style.display = 'none';
-      chatSuccess.classList.add('show');
-      userNameInput.value = '';
-      userEmailInput.value = '';
-      userMessageInput.value = '';
-
-      // Optionally, close chatbox after a delay or let user close it
-      setTimeout(() => {
-        chatBox.classList.remove('open');
-        chatToggle.classList.remove('active');
-        chatSuccess.classList.remove('show');
-        chatForm.style.display = 'flex';
-      }, 5000); // Close after 5 seconds
     });
   }
 

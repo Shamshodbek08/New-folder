@@ -1,0 +1,7 @@
+# Firebase configuration file
+firebase-config.js
+
+# Node.js dependencies
+/node_modules
+.env
+.DS_Store
